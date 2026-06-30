@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NEWSNET 24</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: 'Oswald', Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  #screen {
+    position: relative;
+    width: 100%; height: 100vh;
+    background: #000;
+  }
+
+  /* ───────── DEBUG / TIME-SKIP PANEL ───────── */
+  #debugPanel {
+    position: fixed;
+    top: 10px; left: 10px;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 230px;
+  }
+
+  #debugPanel.collapsed .panel-body { display: none; }
+
+  #debugPanel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    color: #0f0;
+    letter-spacing: 1px;
+  }
+
+  #debugPanel input[type="range"] { width: 100%; }
+
+  #debugPanel .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  #debugPanel button {
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  #debugPanel button:hover { background: #333; }
+
+  /* ───────── ALERT TEST PANEL ───────── */
+  #alertTestPanel {
+    position: fixed;
+    top: 10px; right: 10px;
+    background: rgba(0,0,0,0.88);
+    border: 1px solid rgba(255,80,80,0.4);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 230px;
+  }
+
+  #alertTestPanel.collapsed .panel-body { display: none; }
+
+  #alertTestPanel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    color: #ff6b6b;
+    letter-spacing: 1px;
+  }
+
+  #alertTestPanel label {
+    color: rgba(255,255,255,0.6);
+    font-size: 10px;
+    display: block;
+    margin-top: 4px;
+  }
+
+  #alertTestPanel select,
+  #alertTestPanel input[type="text"] {
+    width: 100%;
+    background: #111;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  #alertTestPanel button {
+    background: #b91c1c;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    margin-top: 6px;
+  }
+  #alertTestPanel button:hover { background: #d32f2f; }
+
+  #alertTestPanel button.clear-btn {
+    background: #333;
+  }
+  #alertTestPanel button.clear-btn:hover { background: #444; }
+
+  #simTimeDisplay { color: #0ff; font-size: 14px; }
+
+  /* ───────── PLAYER ───────── */
+  #playerFrame {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    border: none;
+    z-index: 1;
+  }
+
+  /* ───────── OFFLINE SCREEN ───────── */
+  /* ───────── WEATHER ALERT — FULL TAKEOVER (warnings/watches+) ───────── */
+  #alertScreen {
+    display: none;
+    position: fixed; inset: 0;
+    background: #1a0000;
+    z-index: 20000;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+  }
+
+  #alertScreen.show { display: flex; }
+
+  #alertScreen::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(135deg, rgba(255,0,0,0.06) 0px, rgba(255,0,0,0.06) 12px, transparent 12px, transparent 24px);
+    animation: alertStripeMove 1.5s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes alertStripeMove {
+    from { background-position: 0 0; }
+    to   { background-position: 48px 0; }
+  }
+
+  #alertScreen .alert-banner-top {
+    background: #c1121f;
+    width: 100%;
+    padding: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 3px;
+    position: absolute;
+    top: 0; left: 0;
+    animation: alertPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes alertPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+  }
+
+  #alertScreen .alert-event {
+    font-size: 56px;
+    font-weight: 700;
+    color: #ff5252;
+    letter-spacing: 2px;
+    margin-bottom: 18px;
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+  }
+
+  #alertScreen .alert-areas {
+    font-size: 22px;
+    color: #fff;
+    margin-bottom: 22px;
+    max-width: 80%;
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 1;
+  }
+
+  #alertScreen .alert-desc {
+    font-size: 15px;
+    color: rgba(255,255,255,0.75);
+    max-width: 75%;
+    line-height: 1.5;
+    position: relative;
+    z-index: 1;
+    max-height: 30vh;
+    overflow-y: auto;
+  }
+
+  #alertScreen .alert-expires {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 18px;
+    letter-spacing: 2px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ───────── WEATHER ADVISORY — BANNER OVERLAY ───────── */
+  #advisoryBanner {
+    display: none;
+    position: fixed;
+    bottom: 70px; left: 0; right: 0;
+    z-index: 15000;
+    background: rgba(184,134,11,0.92);
+    color: #1a1200;
+    padding: 10px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 1px;
+    align-items: center;
+    gap: 14px;
+  }
+
+  #advisoryBanner.show { display: flex; }
+
+  #advisoryBanner .adv-tag {
+    background: #1a1200;
+    color: #ffd76a;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    flex-shrink: 0;
+  }
+
+  #advisoryBanner .adv-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #offlineScreen {
+    display: none;
+    position: absolute; inset: 0;
+    background: #000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 5;
+  }
+
+  #offlineScreen .bars {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 22%;
+    display: flex;
+  }
+  #offlineScreen .bars div { flex: 1; }
+
+  #offlineScreen .msg {
+    font-size: 28px;
+    letter-spacing: 6px;
+    color: #ccc;
+    text-align: center;
+  }
+
+  #offlineScreen .submsg {
+    font-size: 14px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 3px;
+    margin-top: 10px;
+  }
+
+  #offlineScreen canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0.08;
+  }
+
+  /* ───────── STANDBY / FULL WEATHER SCREEN ───────── */
+  #standbyScreen {
+    display: none;
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at top, #050608, #000000);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 5;
+    gap: 14px;
+  }
+
+  #standbyScreen .net-id {
+    font-size: 16px;
+    letter-spacing: 6px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 6px;
+  }
+
+  #standbyScreen .weather-emoji-big {
+    font-size: 96px;
+    line-height: 1;
+  }
+
+  #standbyScreen .weather-temp-big {
+    font-size: 90px;
+    font-weight: 700;
+    color: #ddd;
+    line-height: 1;
+  }
+
+  #standbyScreen .weather-desc-big {
+    font-size: 26px;
+    color: #6fa6c9;
+    letter-spacing: 2px;
+  }
+
+  #standbyScreen .weather-details-big {
+    font-size: 16px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* Daily forecast strip on the overnight weather screen */
+  #standbyForecast {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  #standbyForecast .fc-day {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 10px 16px;
+    text-align: center;
+    min-width: 70px;
+  }
+
+  #standbyForecast .fc-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  #standbyForecast .fc-emoji {
+    font-size: 22px;
+    margin: 2px 0;
+  }
+
+  #standbyForecast .fc-hi {
+    font-size: 15px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+  }
+
+  #standbyForecast .fc-lo {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+  }
+
+  /* Corner clock shown only on the full weather screen */
+  #standbyCornerClock {
+    position: absolute;
+    top: 18px; left: 22px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    color: rgba(255,255,255,0.65);
+    letter-spacing: 1px;
+  }
+
+  /* ───────── LOWER THIRD / BUG ───────── */
+  #lowerThird {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+    padding: 14px 20px;
+    pointer-events: none;
+  }
+
+  #lowerThird .net-logo {
+    background: #c1121f;
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 2px;
+    padding: 6px 14px;
+    margin-right: 14px;
+  }
+
+  #lowerThird .segment-label {
+    font-size: 15px;
+    color: #fff;
+    letter-spacing: 1px;
+    flex: 1;
+  }
+
+  #lowerThird .clock-mini {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    color: #fff;
+    margin-left: 14px;
+  }
+
+  #channelBug {
+    position: absolute;
+    top: 14px; right: 18px;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.55);
+    z-index: 50;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="screen">
+
+  <div id="playerFrame"></div>
+
+  <div id="offlineScreen">
+    <canvas id="offlineStatic"></canvas>
+    <div class="bars" id="offlineBars"></div>
+    <div class="msg">WE'LL BE RIGHT BACK</div>
+    <div class="submsg">NEWSNET 24 IS OFF THE AIR · BROADCAST RESUMES AT 5:00 AM</div>
+  </div>
+
+  <div id="standbyScreen">
+    <div id="standbyCornerClock">--:--</div>
+    <div class="net-id">NEWSNET 24 · OVERNIGHT WEATHER</div>
+    <div class="weather-emoji-big" id="standbyEmoji">🌙</div>
+    <div class="weather-temp-big" id="standbyTemp">--°F</div>
+    <div class="weather-desc-big" id="standbyDesc">LOADING</div>
+    <div class="weather-details-big" id="standbyDetails">— · —</div>
+    <div id="standbyForecast"></div>
+  </div>
+
+  <!-- FULL TAKEOVER WEATHER ALERT -->
+  <div id="alertScreen">
+    <div class="alert-banner-top">⚠ NATIONAL WEATHER SERVICE EMERGENCY ALERT ⚠</div>
+    <div class="alert-event" id="alertEvent">TORNADO WARNING</div>
+    <div class="alert-areas" id="alertAreas">— areas —</div>
+    <div class="alert-desc" id="alertDesc">—</div>
+    <div class="alert-expires" id="alertExpires">—</div>
+  </div>
+
+  <!-- ADVISORY BANNER (non-blocking) -->
+  <!-- ALERT TEST PANEL -->
+  <div id="alertTestPanel">
+    <div class="panel-header" onclick="toggleAlertTestPanel()">
+      <span>🚨 ALERT TEST</span>
+      <span id="alertTestToggleIcon">▾</span>
+    </div>
+    <div class="panel-body">
+      <label>Event type</label>
+      <select id="testEventType">
+        <option value="Tornado Warning">Tornado Warning</option>
+        <option value="Severe Thunderstorm Warning">Severe Thunderstorm Warning</option>
+        <option value="Flash Flood Warning">Flash Flood Warning</option>
+        <option value="Tornado Watch">Tornado Watch</option>
+        <option value="Severe Thunderstorm Watch">Severe Thunderstorm Watch</option>
+        <option value="Winter Storm Warning">Winter Storm Warning</option>
+        <option value="Extreme Wind Warning">Extreme Wind Warning</option>
+        <option value="Flood Advisory">Flood Advisory</option>
+        <option value="Heat Advisory">Heat Advisory</option>
+        <option value="Wind Advisory">Wind Advisory</option>
+        <option value="Special Weather Statement">Special Weather Statement</option>
+      </select>
+
+      <label>Affected areas</label>
+      <input type="text" id="testAreas" value="Leander, Cedar Park, Liberty Hill, Round Rock">
+
+      <label>Description (optional)</label>
+      <input type="text" id="testDesc" value="A severe storm was located near the area, moving northeast at 35 mph.">
+
+      <button onclick="fireTestAlert()">FIRE TEST ALERT</button>
+      <button class="clear-btn" onclick="clearTestAlert()">CLEAR ALERT</button>
+    </div>
+  </div>
+
+  <div id="advisoryBanner">
+    <div class="adv-tag">ADVISORY</div>
+    <div class="adv-text" id="advisoryText">—</div>
+  </div>
+
+  <div id="channelBug">NEWSNET 24</div>
+
+  <div id="lowerThird">
+    <div class="net-logo" id="ntLogo">NEWSNET</div>
+    <div class="segment-label" id="ntSegment">Loading schedule...</div>
+    <div class="clock-mini" id="ntClock">--:--</div>
+  </div>
+</div>
+
+<!-- DEBUG PANEL -->
+<div id="debugPanel">
+  <div class="panel-header" onclick="toggleDebug()">
+    <span>⏱ TIME-SKIP DEBUG</span>
+    <span id="debugToggleIcon">▾</span>
+  </div>
+  <div class="panel-body">
+    <div class="row">
+      <label>Use simulated time</label>
+      <input type="checkbox" id="useSimTime" onchange="onSimToggle()">
+    </div>
+    <div id="simTimeDisplay">07:00</div>
+    <input type="range" id="simSlider" min="0" max="1439" value="420" oninput="onSimSlide()">
+    <div class="row">
+      <button onclick="jumpTo(7,0)">7AM</button>
+      <button onclick="jumpTo(10,0)">10AM</button>
+      <button onclick="jumpTo(12,0)">12PM</button>
+      <button onclick="jumpTo(16,0)">4PM</button>
+      <button onclick="jumpTo(18,0)">6PM</button>
+      <button onclick="jumpTo(21,0)">9PM</button>
+      <button onclick="jumpTo(0,30)">12:30AM</button>
+      <button onclick="jumpTo(3,0)">3AM</button>
+    </div>
+    <div class="row" style="font-size:10px;color:rgba(255,255,255,0.4)">
+      <span id="currentSlotLabel">—</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   CONFIG
+   No RSS. No proxy. No queue. Just direct embeds —
+   either a channel's live stream, or specific
+   uploaded videos you give me, slotted by time.
+════════════════════════════════════════════ */
+const OWM_KEY = "69d758106d8333cb8e806b8d3bff6d15";
+const LAT = 30.5083, LON = -97.6789;
+
+// NWS county code for Williamson County, TX — covers Leander, Cedar Park,
+// Liberty Hill, Round Rock, and Georgetown. No API key needed.
+const NWS_ZONE = "TXC491";
+const NWS_ALERT_CHECK_MS = 2 * 60 * 1000; // poll every 2 minutes
+
+// Severities that get a full-screen takeover instead of a banner.
+// Everything NOT in this set (e.g. "Advisory") is treated as banner-only.
+const TAKEOVER_SEVERITIES = ["Warning", "Watch", "Emergency"];
+
+// Official 24/7 live news streams — these auto-update themselves on YouTube's end,
+// so there is nothing for you to maintain here.
+const LIVE_STREAMS = {
+  BBC:  "vtX1m5_wlzw",                 // BBC News Live (youtube.com/live/vtX1m5_wlzw)
+  FOX7: "live_stream?channel=UC5maSolHQX9er0BOxrzjMwA" // FOX 7 Austin channel live slot
+};
+
+// Music video pool for the music blocks
+const MUSIC_VIDEOS = [
+  "sOnqjkJTMaA", "Zi_XLOBDo_Y", "YNzuiRuQNYY", "PIb6AZdTr-A",
+  "t4QK8RxCAwo", "wp43OdtAAkM", "FTQbiNvZqaY", "SZQIfEN_p2A",
+  "m3-hY-hlhBg", "xMaE6toi4mk",
+  // Newly added songs
+  "Sd4SJVsTulc",  // Bad — Michael Jackson
+  "h1elr5bmZC8",  // Chicago — Michael Jackson
+  "XAi3VTSdTxU",  // Earth Song — Michael Jackson
+  "Gw7gNf_9njs",  // Goodbye Earl — The Chicks
+  "Qt2mbGP6vFI",  // Another Day in Paradise — Phil Collins
+  "WrMGGouem3c",  // Suspicious Minds — Elvis Presley
+  "9jK-NcRmVcw"   // The Final Countdown — Europe
+  // "I Knew It" and "I Knew You" couldn't be verified as real MJ tracks —
+  // skipped rather than guess wrong. Tell me the artist and I'll add them.
+];
+
+// Ad pools — shuffled once per page load so the order isn't identical every time
+const NIGHT_ADS = ["GMUeLSUydrA", "hJ6cXcxUAAA"];
+const DAY_ADS   = ["TUnx2o5FoYY"];
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let shuffledNightAds = shuffleArray(NIGHT_ADS);
+let shuffledDayAds   = shuffleArray(DAY_ADS);
+let nightAdIdx = 0;
+let dayAdIdx   = 0;
+
+function nextNightAd() {
+  if (nightAdIdx >= shuffledNightAds.length) {
+    shuffledNightAds = shuffleArray(NIGHT_ADS);
+    nightAdIdx = 0;
+  }
+  return shuffledNightAds[nightAdIdx++];
+}
+
+function nextDayAd() {
+  if (dayAdIdx >= shuffledDayAds.length) {
+    shuffledDayAds = shuffleArray(DAY_ADS);
+    dayAdIdx = 0;
+  }
+  return shuffledDayAds[dayAdIdx++];
+}
+
+// Ads / filler video
+const FILLER_AD_ID = "pQ2jtyVKWhc";
+
+/* ════════════════════════════════════════════
+   YOUR SPECIFIC NEWSCAST VIDEOS
+   Paste exact video IDs here, mapped to the hour
+   they aired/should air. "today" plays today,
+   "tomorrow" auto-plays the next day at the same
+   time — so you only have to enter each video once
+   and it correctly repeats one day later.
+   Format: hour (0-23) -> YouTube video ID
+════════════════════════════════════════════ */
+const SCHEDULED_VIDEOS = {
+  // Hour : videoId  (24-hour clock)
+  7:  "MnD9mEuStTg",
+  9:  "j6OEL_s-r0I",
+  18: "WZXDND7-V9E"
+  // Add more hours here as you give me more links, e.g.:
+  // 8:  "xxxxxxxxxxx",
+  // 19: "xxxxxxxxxxx",
+};
+
+/* ════════════════════════════════════════════
+   SCHEDULE DEFINITION
+════════════════════════════════════════════ */
+function M(h, m=0) { return h * 60 + m; }
+
+const SCHEDULE = [
+  { start: M(5),  end: M(7),  type: "bbc_live",        label: "BBC NATIONAL NEWS · LIVE" },
+  { start: M(7),  end: M(9),  type: "scheduled_or_fox", label: "MORNING NEWS" },
+  { start: M(9),  end: M(10), type: "scheduled_or_fox", label: "MORNING HIGHLIGHTS" },
+  { start: M(10), end: M(12), type: "bbc_live",        label: "BBC NATIONAL NEWS · LIVE" },
+  { start: M(12), end: M(16), type: "music",           label: "MUSIC VIDEOS" },
+  { start: M(16), end: M(18), type: "scheduled_or_fox", label: "EVENING PREVIEW · WEATHER & TRAFFIC" },
+  { start: M(18), end: M(19), type: "scheduled_or_fox", label: "KVUE EVENING NEWS" },
+  { start: M(19), end: M(20), type: "scheduled_or_fox", label: "EXTENDED COVERAGE" },
+  { start: M(20), end: M(21), type: "scheduled_or_fox", label: "NEWS RECAP" },
+  { start: M(21), end: M(22), type: "scheduled_or_fox", label: "LATE NEWS" },
+  { start: M(22), end: M(24), type: "music",           label: "MUSIC VIDEOS" },
+  { start: M(0),  end: M(2),  type: "overnight_calm",  label: "OVERNIGHT · WEATHER" },
+  { start: M(2),  end: M(3),  type: "overnight_calm",  label: "OVERNIGHT · WEATHER" },
+  { start: M(3),  end: M(5),  type: "offline",         label: "OFF AIR" },
+];
+
+function getSlot(minutes) {
+  for (const s of SCHEDULE) {
+    if (minutes >= s.start && minutes < s.end) return s;
+  }
+  return SCHEDULE[0];
+}
+
+/* ════════════════════════════════════════════
+   TIME ENGINE (real or simulated)
+════════════════════════════════════════════ */
+let useSimTime = false;
+let simMinutes = 420;
+
+function nowMinutes() {
+  if (useSimTime) return simMinutes;
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+function currentHour() {
+  return Math.floor(nowMinutes() / 60);
+}
+
+function fmtTime(mins) {
+  let h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  const ampm = h >= 12 ? "PM" : "AM";
+  let h12 = h % 12; if (h12 === 0) h12 = 12;
+  return `${h12}:${String(m).padStart(2,"0")} ${ampm}`;
+}
+
+/* ════════════════════════════════════════════
+   DEBUG PANEL
+════════════════════════════════════════════ */
+function toggleDebug() {
+  document.getElementById("debugPanel").classList.toggle("collapsed");
+}
+function onSimToggle() {
+  useSimTime = document.getElementById("useSimTime").checked;
+  evaluateSchedule(true);
+}
+function onSimSlide() {
+  simMinutes = parseInt(document.getElementById("simSlider").value, 10);
+  document.getElementById("simTimeDisplay").innerText = fmtTime(simMinutes);
+  if (useSimTime) evaluateSchedule(true);
+}
+function jumpTo(h, m) {
+  simMinutes = M(h, m);
+  document.getElementById("simSlider").value = simMinutes;
+  document.getElementById("simTimeDisplay").innerText = fmtTime(simMinutes);
+  document.getElementById("useSimTime").checked = true;
+  useSimTime = true;
+  evaluateSchedule(true);
+}
+
+/* ════════════════════════════════════════════
+   YOUTUBE IFRAME API — lets us detect when a video
+   actually ENDS (for music) instead of guessing a timer.
+════════════════════════════════════════════ */
+let ytPlayer = null;
+let ytReady = false;
+let pendingPlay = null; // {videoId, opts} queued if API isn't ready yet
+let onMusicEndedCallback = null; // set while a music video is playing
+
+function loadYouTubeAPI() {
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+}
+
+window.onYouTubeIframeAPIReady = function() {
+  ytPlayer = new YT.Player('playerFrame', {
+    height: '100%',
+    width: '100%',
+    playerVars: { autoplay: 1, controls: 1, modestbranding: 1, rel: 0 },
+    events: {
+      onReady: () => { ytReady = true; if (pendingPlay) { const p = pendingPlay; pendingPlay = null; playYouTube(p.videoId, p.opts); } },
+      onStateChange: onPlayerStateChange
+    }
+  });
+};
+
+function onPlayerStateChange(e) {
+  // 0 = ended
+  if (e.data === 0 && onMusicEndedCallback) {
+    const cb = onMusicEndedCallback;
+    onMusicEndedCallback = null;
+    cb();
+  }
+}
+
+/* ════════════════════════════════════════════
+   PLAYER CONTROL
+════════════════════════════════════════════ */
+function playYouTube(videoId, opts = {}) {
+  document.getElementById("offlineScreen").style.display = "none";
+  document.getElementById("standbyScreen").style.display = "none";
+
+  if (!ytReady || !ytPlayer || !ytPlayer.loadVideoById) {
+    pendingPlay = { videoId, opts };
+    return;
+  }
+  ytPlayer.loadVideoById(videoId);
+  document.getElementById("playerFrame").style.display = "block";
+}
+
+// Embeds a channel's live stream directly — auto-resolves to whatever is
+// currently live on that channel, no video ID needed, self-updating forever.
+function playChannelLive(channelId, opts = {}) {
+  document.getElementById("offlineScreen").style.display = "none";
+  document.getElementById("standbyScreen").style.display = "none";
+  if (!ytReady || !ytPlayer) {
+    pendingPlay = { liveChannelId: channelId, opts };
+    return;
+  }
+  ytPlayer.cueVideoById ? null : null; // no-op, live streams handled via loadPlaylist fallback below
+  // Live channel streams aren't loadable by ID directly through the JS API in all cases,
+  // so we fall back to swapping the underlying iframe src for this one case only.
+  const params = new URLSearchParams({ autoplay: "1", controls: opts.controls ?? "1", modestbranding: "1" });
+  document.getElementById("playerFrame").src = `https://www.youtube.com/embed/live_stream?channel=${channelId}&${params.toString()}`;
+  document.getElementById("playerFrame").style.display = "block";
+}
+
+function stopPlayer() {
+  if (ytPlayer && ytPlayer.stopVideo) {
+    try { ytPlayer.stopVideo(); } catch(e) {}
+  }
+  document.getElementById("playerFrame").style.display = "none";
+}
+
+function showOffline() {
+  stopPlayer();
+  document.getElementById("offlineScreen").style.display = "flex";
+  document.getElementById("standbyScreen").style.display = "none";
+}
+
+function showStandby() {
+  stopPlayer();
+  document.getElementById("offlineScreen").style.display = "none";
+  document.getElementById("standbyScreen").style.display = "flex";
+}
+
+/* ════════════════════════════════════════════
+   OVERNIGHT CYCLE — alternates: night ad, then full weather
+   screen with corner clock, then repeats.
+════════════════════════════════════════════ */
+let overnightTimer = null;
+let overnightShowingAd = true; // starts with an ad first
+
+function runOvernightCycle() {
+  clearTimeout(overnightTimer);
+
+  if (overnightShowingAd) {
+    document.getElementById("ntLogo").innerText = "ADS";
+    document.getElementById("ntSegment").innerText = "Commercial break";
+    playYouTube(nextNightAd(), { controls: "0" });
+    document.getElementById("standbyScreen").style.display = "none";
+    // After the ad's rough runtime, switch to the full weather screen
+    overnightTimer = setTimeout(() => {
+      overnightShowingAd = false;
+      runOvernightCycle();
+    }, 60 * 1000); // ~60s per ad slot; adjust if your ads run longer
+  } else {
+    document.getElementById("ntLogo").innerText = "NEWSNET";
+    document.getElementById("ntSegment").innerText = "Overnight Weather";
+    stopPlayer();
+    showStandby();
+    loadOvernightWeather();
+    overnightTimer = setTimeout(() => {
+      overnightShowingAd = true;
+      runOvernightCycle();
+    }, 90 * 1000); // full weather screen shown for 90s, then back to an ad
+  }
+}
+
+/* ════════════════════════════════════════════
+   MUSIC ROTATION — advances only when the current
+   song actually ENDS, not on a guessed timer.
+════════════════════════════════════════════ */
+let musicIdx = Math.floor(Math.random() * MUSIC_VIDEOS.length);
+
+function playNextMusic() {
+  musicIdx = (musicIdx + 1) % MUSIC_VIDEOS.length;
+  playYouTube(MUSIC_VIDEOS[musicIdx]);
+  onMusicEndedCallback = () => {
+    // Only keep chaining if we're still actually in a music slot
+    if (currentSlotKey && currentSlotKey.includes("music")) playNextMusic();
+  };
+}
+
+/* ════════════════════════════════════════════
+   CORE SCHEDULE EVALUATOR
+════════════════════════════════════════════ */
+const FOX7_CHANNEL_ID = "UC5maSolHQX9er0BOxrzjMwA";
+const BBC_LIVE_VIDEO_ID = "vtX1m5_wlzw";
+
+let currentSlotKey = null;
+
+function evaluateSchedule(force = false) {
+  const mins = nowMinutes();
+  const slot = getSlot(mins);
+  const slotKey = `${slot.start}-${slot.end}-${slot.type}-${currentHour()}`;
+
+  document.getElementById("ntClock").innerText = fmtTime(mins);
+  document.getElementById("currentSlotLabel").innerText = `Slot: ${slot.label}`;
+
+  if (slotKey === currentSlotKey && !force) return;
+  currentSlotKey = slotKey;
+  onMusicEndedCallback = null; // stop any pending music chain when switching content types
+  clearTimeout(overnightTimer);
+
+  document.getElementById("ntSegment").innerText = slot.label;
+
+  switch (slot.type) {
+    case "offline":
+      document.getElementById("ntLogo").innerText = "OFF AIR";
+      showOffline();
+      break;
+
+    case "overnight_calm":
+      overnightShowingAd = true; // always start the cycle with an ad on entry
+      runOvernightCycle();
+      break;
+
+    case "music":
+      document.getElementById("ntLogo").innerText = "MUSIC";
+      playNextMusic();
+      break;
+
+    case "bbc_live":
+      document.getElementById("ntLogo").innerText = "BBC";
+      playYouTube(BBC_LIVE_VIDEO_ID);
+      break;
+
+    case "scheduled_or_fox":
+      // If you gave me a specific video for this exact hour, play it (works today AND tomorrow
+      // automatically since we key off hour-of-day, not a specific date).
+      // Otherwise fall back to FOX 7 Austin's live stream so the slot is never empty.
+      const hour = Math.floor(mins / 60);
+      if (SCHEDULED_VIDEOS[hour]) {
+        document.getElementById("ntLogo").innerText = "KVUE";
+        playYouTube(SCHEDULED_VIDEOS[hour]);
+      } else {
+        document.getElementById("ntLogo").innerText = "FOX7";
+        playChannelLive(FOX7_CHANNEL_ID);
+      }
+      break;
+
+    default:
+      playYouTube(FILLER_AD_ID, { controls: "0" });
+  }
+}
+
+/* ════════════════════════════════════════════
+   WEATHER (overnight full weather screen)
+════════════════════════════════════════════ */
+function weatherEmojiFor(main) {
+  if (!main) return "🌙";
+  if (main.includes("Cloud")) return "☁️";
+  if (main.includes("Rain"))  return "🌧️";
+  if (main.includes("Thunder")) return "⛈️";
+  if (main.includes("Clear")) return "🌙";
+  if (main.includes("Snow"))  return "❄️";
+  return "🌙";
+}
+
+async function loadOvernightWeather() {
+  try {
+    const [curRes, fcRes] = await Promise.all([
+      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${LAT}&lon=${LON}&units=imperial&appid=${OWM_KEY}`),
+      fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${LAT}&lon=${LON}&units=imperial&appid=${OWM_KEY}`)
+    ]);
+    const d  = await curRes.json();
+    const fc = await fcRes.json();
+
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+    set("standbyEmoji",  weatherEmojiFor(d.weather[0].main));
+    set("standbyTemp",   `${Math.round(d.main.temp)}°F`);
+    set("standbyDesc",   d.weather[0].main.toUpperCase());
+    set("standbyDetails",`Feels ${Math.round(d.main.feels_like)}°F · Humidity ${d.main.humidity}% · Wind ${Math.round(d.wind.speed)} mph`);
+
+    // Build a simple 5-day forecast from the 3-hour-interval data
+    const days = {};
+    for (const item of fc.list) {
+      const dt = new Date(item.dt * 1000);
+      const key = dt.toDateString();
+      if (!days[key]) days[key] = { highs: [], lows: [], conditions: [] };
+      days[key].highs.push(item.main.temp_max);
+      days[key].lows.push(item.main.temp_min);
+      days[key].conditions.push(item.weather[0].main);
+    }
+    const dayKeys = Object.keys(days).slice(0, 5);
+    const strip = document.getElementById("standbyForecast");
+    if (strip) {
+      strip.innerHTML = dayKeys.map(k => {
+        const day = days[k];
+        const hi  = Math.round(Math.max(...day.highs));
+        const lo  = Math.round(Math.min(...day.lows));
+        const emoji = weatherEmojiFor(day.conditions[Math.floor(day.conditions.length / 2)]);
+        const label = new Date(k).toLocaleDateString("en-US", { weekday: "short" });
+        return `
+          <div class="fc-day">
+            <div class="fc-label">${label}</div>
+            <div class="fc-emoji">${emoji}</div>
+            <div class="fc-hi">${hi}°</div>
+            <div class="fc-lo">${lo}°</div>
+          </div>`;
+      }).join("");
+    }
+  } catch (e) {
+    const el = document.getElementById("standbyDesc");
+    if (el) el.innerText = "WEATHER UNAVAILABLE";
+  }
+}
+setInterval(loadOvernightWeather, 15 * 60 * 1000);
+
+/* ════════════════════════════════════════════
+   OFFLINE STATIC ANIMATION
+════════════════════════════════════════════ */
+const ostaticCanvas = document.getElementById("offlineStatic");
+const octx = ostaticCanvas.getContext("2d");
+function resizeOstatic() { ostaticCanvas.width = innerWidth; ostaticCanvas.height = innerHeight; }
+window.addEventListener("resize", resizeOstatic);
+resizeOstatic();
+
+function drawOfflineStatic() {
+  if (document.getElementById("offlineScreen").style.display !== "flex") return;
+  const w = ostaticCanvas.width, h = ostaticCanvas.height;
+  const img = octx.createImageData(w, h);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = Math.random() > 0.5 ? 255 : 0;
+    img.data[i] = img.data[i+1] = img.data[i+2] = v;
+    img.data[i+3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+  requestAnimationFrame(drawOfflineStatic);
+}
+drawOfflineStatic();
+
+const obars = document.getElementById("offlineBars");
+["#c0c0c0","#c0c000","#00c0c0","#00c000","#c000c0","#c00000","#0000c0"].forEach(c => {
+  const d = document.createElement("div");
+  d.style.background = c;
+  obars.appendChild(d);
+});
+
+/* ════════════════════════════════════════════
+   CLOCK + INIT LOOP
+════════════════════════════════════════════ */
+function tickClock() {
+  const mins = nowMinutes();
+  document.getElementById("ntClock").innerText = fmtTime(mins);
+  const cornerClock = document.getElementById("standbyCornerClock");
+  if (cornerClock) cornerClock.innerText = fmtTime(mins);
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* ════════════════════════════════════════════
+   NWS WEATHER ALERTS — Williamson County, TX
+   Polls the free public NWS API. Advisories get a
+   non-blocking banner; anything more severe (Watch,
+   Warning, Emergency) takes over the full screen,
+   pauses whatever's playing, and restores it after
+   the alert's own expiration time.
+════════════════════════════════════════════ */
+let activeAlertIds = new Set();
+let takeoverActive = false;
+let preAlertSlotKey = null; // remembers what was playing so we can resume it
+
+function classifyAlert(severity, event) {
+  // NWS "severity" field is one of: Extreme, Severe, Moderate, Minor, Unknown.
+  // We instead key off the event's own naming convention, since "Tornado Warning",
+  // "Flood Watch", "Heat Advisory" etc. tell us directly what tier it is.
+  const lower = (event || "").toLowerCase();
+  if (lower.includes("emergency")) return "Emergency";
+  if (lower.includes("warning"))   return "Warning";
+  if (lower.includes("watch"))     return "Watch";
+  return "Advisory"; // covers Advisory, Statement, Outlook, Special Weather Statement, etc.
+}
+
+// NWS doesn't reliably send CORS headers for browser fetches, so route through
+// a couple of free proxies that add them — automatic fallback, nothing to set up.
+const NWS_PROXIES = [
+  (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+  (url) => "https://corsproxy.io/?url=" + encodeURIComponent(url),
+  (url) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url)
+];
+
+async function fetchNWSAlerts() {
+  const targetUrl = `https://api.weather.gov/alerts/active?zone=${NWS_ZONE}`;
+  for (const buildProxyUrl of NWS_PROXIES) {
+    try {
+      const res = await fetch(buildProxyUrl(targetUrl));
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data && data.features) return data;
+    } catch (e) {
+      // try next proxy
+    }
+  }
+  throw new Error("All NWS proxies failed");
+}
+
+async function checkNWSAlerts() {
+  try {
+    const data = await fetchNWSAlerts();
+    const features = data.features || [];
+
+    if (features.length === 0) {
+      clearAllAlerts();
+      return;
+    }
+
+    // Rank: Emergency > Warning > Watch > Advisory — always surface the worst active one
+    const rank = { "Emergency": 3, "Warning": 2, "Watch": 1, "Advisory": 0 };
+    let worst = null;
+
+    for (const f of features) {
+      const p = f.properties;
+      const tier = classifyAlert(p.severity, p.event);
+      if (!worst || rank[tier] > rank[worst.tier]) {
+        worst = { tier, props: p };
+      }
+    }
+
+    if (TAKEOVER_SEVERITIES.includes(worst.tier)) {
+      showAlertTakeover(worst.props, worst.tier);
+    } else {
+      showAdvisoryBanner(worst.props);
+    }
+  } catch (e) {
+    console.warn("NWS alert check failed:", e);
+  }
+}
+
+function clearAllAlerts() {
+  document.getElementById("advisoryBanner").classList.remove("show");
+  if (takeoverActive) restoreFromTakeover();
+}
+
+function showAdvisoryBanner(props) {
+  // Don't show a banner if we're already in a full takeover for something worse
+  if (takeoverActive) return;
+  const el = document.getElementById("advisoryBanner");
+  document.getElementById("advisoryText").innerText =
+    `${props.event.toUpperCase()} — ${props.areaDesc} — ${props.headline || props.event}`;
+  el.classList.add("show");
+}
+
+let alertToneAudio = null;
+function playAlertTone() {
+  // Simple synthesized two-tone alert beep using the Web Audio API — no external file needed.
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const playTone = (freq, start, dur) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = freq;
+      osc.type = "square";
+      gain.gain.value = 0.15;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur);
+    };
+    playTone(853, 0, 0.8);
+    playTone(960, 0.85, 0.8);
+  } catch (e) {
+    console.warn("Alert tone failed:", e);
+  }
+}
+
+function showAlertTakeover(props, tier) {
+  const alertId = props.id || (props.event + props.areaDesc);
+  const isNewAlert = !activeAlertIds.has(alertId);
+
+  document.getElementById("advisoryBanner").classList.remove("show");
+
+  if (!takeoverActive) {
+    preAlertSlotKey = currentSlotKey; // remember what to resume later
+    stopPlayer();
+    clearTimeout(overnightTimer);
+    onMusicEndedCallback = null;
+  }
+
+  takeoverActive = true;
+  activeAlertIds.add(alertId);
+
+  document.getElementById("alertEvent").innerText = props.event.toUpperCase();
+  document.getElementById("alertAreas").innerText = props.areaDesc;
+  document.getElementById("alertDesc").innerText = props.description
+    ? props.description.slice(0, 600)
+    : (props.headline || "Take appropriate action immediately.");
+  const exp = props.expires ? new Date(props.expires) : null;
+  document.getElementById("alertExpires").innerText = exp
+    ? `IN EFFECT UNTIL ${exp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+    : "IN EFFECT UNTIL FURTHER NOTICE";
+
+  document.getElementById("alertScreen").classList.add("show");
+  document.getElementById("offlineScreen").style.display = "none";
+  document.getElementById("standbyScreen").style.display = "none";
+
+  if (isNewAlert) playAlertTone(); // only play the tone once per distinct alert, not every poll
+}
+
+function restoreFromTakeover() {
+  takeoverActive = false;
+  document.getElementById("alertScreen").classList.remove("show");
+  activeAlertIds.clear();
+  currentSlotKey = null; // force evaluateSchedule to rebuild whatever should be playing now
+  evaluateSchedule(true);
+}
+
+/* ════════════════════════════════════════════
+   ALERT TEST PANEL — lets you simulate any alert
+   without waiting for a real one. Uses the exact
+   same showAlertTakeover/showAdvisoryBanner code
+   path as real NWS alerts, so it's a true test.
+════════════════════════════════════════════ */
+function toggleAlertTestPanel() {
+  document.getElementById("alertTestPanel").classList.toggle("collapsed");
+}
+
+function fireTestAlert() {
+  const event = document.getElementById("testEventType").value;
+  const areas = document.getElementById("testAreas").value || "Test Area";
+  const desc  = document.getElementById("testDesc").value || "This is a simulated test alert.";
+
+  const fakeProps = {
+    id: "TEST-" + Date.now(), // unique each fire so the tone replays every test
+    event: event,
+    areaDesc: areas,
+    description: desc,
+    headline: `${event} issued for ${areas}`,
+    severity: "Severe",
+    expires: new Date(Date.now() + 10 * 60 * 1000).toISOString() // fake 10-min expiry
+  };
+
+  const tier = classifyAlert(fakeProps.severity, fakeProps.event);
+
+  if (TAKEOVER_SEVERITIES.includes(tier)) {
+    showAlertTakeover(fakeProps, tier);
+  } else {
+    showAdvisoryBanner(fakeProps);
+  }
+}
+
+function clearTestAlert() {
+  document.getElementById("advisoryBanner").classList.remove("show");
+  if (takeoverActive) restoreFromTakeover();
+}
+
+setInterval(checkNWSAlerts, NWS_ALERT_CHECK_MS);
+checkNWSAlerts();
+
+setInterval(() => evaluateSchedule(), 30 * 1000);
+loadOvernightWeather();
+loadYouTubeAPI();
+evaluateSchedule(true);
+
+</script>
+</body>
+</html>
